@@ -1,0 +1,19 @@
+{
+  "system_status": "ONLINE",
+  "payload": {
+    "payload_status": "ON",
+    "images_today": 47,
+    "last_image_size": 2.3,
+    "ai_classification": {
+      "result": "Debris Detected",
+      "confidence": 94.2
+    },
+    "health": "75%",
+    "battery_level": 75,
+   
+    "debris_info": {
+      "relative_velocity": 12.4,
+      "distance": 1200
+    }
+  }
+}

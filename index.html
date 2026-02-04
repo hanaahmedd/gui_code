@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debris Detection Ground Station</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Welcome Animation -->
+  <div class="welcome-screen" id="welcome">
+    <div class="stars"></div>
+    
+    <!-- Realistic Planets -->
+    <div class="earth"></div>
+    <div class="mars"></div>
+    <div class="moon"></div>
+    
+    <!-- Realistic Spaceships -->
+    <div class="spaceship spaceship1">
+      <div class="ship-main">
+        <div class="ship-body">
+          <div class="ship-cockpit"></div>
+        </div>
+        <div class="ship-engine"></div>
+      </div>
+    </div>
+    <div class="spaceship spaceship2">
+      <div class="ship-main">
+        <div class="ship-body">
+          <div class="ship-cockpit"></div>
+        </div>
+        <div class="ship-engine"></div>
+      </div>
+    </div>
+    
+    <!-- Space Station -->
+    <div class="space-station">
+      <div class="station-antenna"></div>
+      <div class="station-panel"></div>
+      <div class="station-body"></div>
+    </div>
+    
+    <!-- Space Debris -->
+    <div class="debris debris1">
+      <div class="debris-piece"></div>
+    </div>
+    <div class="debris debris2">
+      <div class="debris-piece"></div>
+    </div>
+    <div class="debris debris3">
+      <div class="debris-piece"></div>
+    </div>
+    
+    <!-- Realistic Meteoroids -->
+    <div class="meteoroid meteoroid1"></div>
+    <div class="meteoroid meteoroid2"></div>
+    <div class="meteoroid meteoroid3"></div>
+    
+    <!-- Asteroid -->
+    <div class="asteroid"></div>
+    
+    <h1 class="welcome-text" id="welcome-text"></h1>
+  </div>
+
+  <!-- Main Ground Station Dashboard -->
+  <div class="main" id="main" style="display: none;">
+    <h2>🛰️ Debris Detection Board - Ground Station</h2>
+    <div class="status-board">
+  <div class="status-card">
+  <h3>Payload Health</h3>
+  <div class="battery-container">
+    <div class="battery-bar" id="payload-battery-bar"></div>
+    <span id="payload-health-label"></span>
+  </div>
+</div>
+
+      <div class="status-card">
+        <h3>Payload Status</h3>
+        <p id="payload-status"></p>
+      </div>
+
+      <div class="status-card">
+        <h3>AI Classification</h3>
+        <p id="ai-result"></p>
+      </div>
+    </div>
+
+    <h2>🚀 Propulsion System</h2>
+<div class="status-card propulsion-card">
+  <h3>Propulsion System</h3>
+  <button id="connect-propulsion">Connect Propulsion</button>
+<div id="prop-log" class="prop-log-box"></div>
+</div>
+
+    <h2>📡 CDM (Conjunction Data Message)</h2>
+    <div class="cdm-box">
+      <p><strong>ID:</strong> <span id="cdm-id"></span></p>
+      <p><strong>Relative Velocity:</strong> <span id="cdm-velocity"></span></p>
+      <p><strong>Risk Level:</strong> <span id="cdm-risk"></span></p>
+      <p><strong>Time to Conjunction:</strong> <span id="cdm-time"></span></p>
+      <p><strong>Miss Distance:</strong> <span id="cdm-distance"></span></p>
+       <button id="download-cdm" style="margin-top:10px; padding:8px 12px; border:none; border-radius:5px; background:#00ffff; color:#000; cursor:pointer;">Download CDM</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
