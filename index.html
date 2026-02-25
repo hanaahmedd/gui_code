@@ -65,46 +65,116 @@
   </div>
 
   <!-- Main Ground Station Dashboard -->
-  <div class="main" id="main" style="display: none;">
-    <h2>🛰️ Debris Detection Board - Ground Station</h2>
-    <div class="status-board">
-  <div class="status-card">
-  <h3>Payload Health</h3>
-  <div class="battery-container">
-    <div class="battery-bar" id="payload-battery-bar"></div>
-    <span id="payload-health-label"></span>
-  </div>
+  <!-- Main Ground Station Dashboard -->
+<div class="dashboard-container" id="main" style="display: none;">
+  <!-- Sidebar Toggle Button -->
+  <button class="sidebar-toggle" id="sidebar-toggle">
+    <span class="bar"></span>
+    <span class="bar"></span>
+    <span class="bar"></span>
+  </button>
+
+  <!-- Collapsible Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <ul>
+      <li class="sidebar-item active" data-section="payload">
+        <span class="icon">📊</span>
+        <span class="label">Payload Health</span>
+      </li>
+      <li class="sidebar-item" data-section="propulsion">
+        <span class="icon">🚀</span>
+        <span class="label">Propulsion</span>
+      </li>
+      <li class="sidebar-item" data-section="cdm">
+        <span class="icon">📡</span>
+        <span class="label">CDM</span>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <!-- Payload Section (originally status-board) -->
+    <section id="payload-section" class="dashboard-section active">
+      <h2>🛰️ Debris Detection Board - Ground Station</h2>
+      <div class="status-board">
+        <div class="status-card">
+          <h3>Payload Health</h3>
+          <div class="battery-container">
+            <div class="battery-bar" id="payload-battery-bar"></div>
+            <span id="payload-health-label"></span>
+          </div>
+        </div>
+        <div class="status-card">
+          <h3>Payload Status</h3>
+          <p id="payload-status"></p>
+        </div>
+        <div class="status-card">
+          <h3>AI Classification</h3>
+          <p id="ai-result"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Propulsion Section -->
+    <section id="propulsion-section" class="dashboard-section">
+      <h2>🚀 Propulsion System</h2>
+      <div class="status-card propulsion-card">
+        <h3>Propulsion System</h3>
+        <button id="connect-propulsion">Connect Propulsion</button>
+        <div id="prop-log" class="prop-log-box"></div>
+      </div>
+    </section>
+
+    <!-- CDM Section -->
+    <section id="cdm-section" class="dashboard-section">
+      <h2>📡 CDM (Conjunction Data Message)</h2>
+      <div class="cdm-box">
+        <p><strong>ID:</strong> <span id="cdm-id"></span></p>
+        <p><strong>Relative Velocity:</strong> <span id="cdm-velocity"></span></p>
+        <p><strong>Risk Level:</strong> <span id="cdm-risk"></span></p>
+        <p><strong>Time to Conjunction:</strong> <span id="cdm-time"></span></p>
+        <p><strong>Miss Distance:</strong> <span id="cdm-distance"></span></p>
+        <button id="download-cdm" style="margin-top:10px; padding:8px 12px; border:none; border-radius:5px; background:#00ffff; color:#000; cursor:pointer;">Download CDM</button>
+      </div>
+    </section>
+  </main>
 </div>
 
-      <div class="status-card">
-        <h3>Payload Status</h3>
-        <p id="payload-status"></p>
-      </div>
+<script type="module">
+  // 1. Import the base app AND the specific tools (Database and Storage)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-      <div class="status-card">
-        <h3>AI Classification</h3>
-        <p id="ai-result"></p>
-      </div>
-    </div>
+  // 2. Your specific configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyCmBzL0wqU877XeDrFbaxt2F6FHuTCV3mo",
+    authDomain: "ground-station-6c392.firebaseapp.com",
+    projectId: "ground-station-6c392",
+    storageBucket: "ground-station-6c392.firebasestorage.app",
+    messagingSenderId: "681592339112",
+    appId: "1:681592339112:web:2916bf576be88c5ea5a09d",
+    measurementId: "G-QPLJLXVZ04",
+    // NOTE: If you created the Realtime Database, it might have a databaseURL. 
+    // If your site can't find data later, come back and add: 
+    // databaseURL: "https://ground-station-6c392-default-rtdb.firebaseio.com"
+  };
 
-    <h2>🚀 Propulsion System</h2>
-<div class="status-card propulsion-card">
-  <h3>Propulsion System</h3>
-  <button id="connect-propulsion">Connect Propulsion</button>
-<div id="prop-log" class="prop-log-box"></div>
-</div>
+  // 3. Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  
+  // 4. Initialize the specific services
+  const db = getDatabase(app);
+  const storage = getStorage(app);
 
-    <h2>📡 CDM (Conjunction Data Message)</h2>
-    <div class="cdm-box">
-      <p><strong>ID:</strong> <span id="cdm-id"></span></p>
-      <p><strong>Relative Velocity:</strong> <span id="cdm-velocity"></span></p>
-      <p><strong>Risk Level:</strong> <span id="cdm-risk"></span></p>
-      <p><strong>Time to Conjunction:</strong> <span id="cdm-time"></span></p>
-      <p><strong>Miss Distance:</strong> <span id="cdm-distance"></span></p>
-       <button id="download-cdm" style="margin-top:10px; padding:8px 12px; border:none; border-radius:5px; background:#00ffff; color:#000; cursor:pointer;">Download CDM</button>
-    </div>
-  </div>
+  // 5. IMPORTANT: Make these "Global" so your script.js can use them
+  window.db = db;
+  window.storage = storage;
+  window.dbRef = ref; // Useful for targeting specific data paths
+  window.onValue = onValue;
+</script>
 
-  <script src="script.js"></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>
