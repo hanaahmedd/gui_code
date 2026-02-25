@@ -141,40 +141,7 @@
   </main>
 </div>
 
-<script type="module">
-  // 1. Import the base app AND the specific tools (Database and Storage)
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-  import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-  // 2. Your specific configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyCmBzL0wqU877XeDrFbaxt2F6FHuTCV3mo",
-    authDomain: "ground-station-6c392.firebaseapp.com",
-    projectId: "ground-station-6c392",
-    storageBucket: "ground-station-6c392.firebasestorage.app",
-    messagingSenderId: "681592339112",
-    appId: "1:681592339112:web:2916bf576be88c5ea5a09d",
-    measurementId: "G-QPLJLXVZ04",
-    // NOTE: If you created the Realtime Database, it might have a databaseURL. 
-    // If your site can't find data later, come back and add: 
-    // databaseURL: "https://ground-station-6c392-default-rtdb.firebaseio.com"
-  };
-
-  // 3. Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  
-  // 4. Initialize the specific services
-  const db = getDatabase(app);
-  const storage = getStorage(app);
-
-  // 5. IMPORTANT: Make these "Global" so your script.js can use them
-  window.db = db;
-  window.storage = storage;
-  window.dbRef = ref; // Useful for targeting specific data paths
-  window.onValue = onValue;
-</script>
-
-<script type="module" src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
