@@ -5,6 +5,7 @@ let latestCDM = null;
 let latestTelemetry = null;
 let propulsionLog = []; // store Bluetooth messages
 let port, reader;
+let serialBuffer = "";
 
 // =====================
 // Firebase Integration
@@ -26,8 +27,6 @@ import { getDatabase, ref, push, set, onValue }
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
-// Helper to log events to Firebase
 function logToFirebase(path, data) {
     const dataRef = ref(db, path);
     push(dataRef, {
@@ -40,19 +39,15 @@ function logToFirebase(path, data) {
 // Window load: fetch telemetry & dashboard setup
 // =====================
 window.addEventListener("load", () => {
-  // Fetch telemetry data from JSON file
   fetch("telemetry.json")
     .then(response => response.json())
     .then(data => {
       latestTelemetry = data;
       fillTelemetry(data);
-
-      // Fill propulsion if exists
       if (data.payload.propulsion) {
         fillPropulsion(data.payload.propulsion);
+        logToFirebase('system/propulsion', data.payload.propulsion);
       }
-
-      // Generate CDM dynamically if debris detected
       const aiResult = data.payload.ai_classification.result.toLowerCase();
       if (aiResult.includes("debris")) {
         const debris = data.payload.debris_info || {};
@@ -63,10 +58,7 @@ window.addEventListener("load", () => {
           time_to_conjunction: estimateTime(debris.relative_velocity, debris.distance),
           miss_distance: debris.distance ? debris.distance + " m" : "Unknown"
         };
-
         fillCDM(latestCDM);
-
-        // NEW: Send to Firebase
     logToFirebase('detections/cdm_events', latestCDM);
       }
     })
@@ -87,8 +79,6 @@ window.addEventListener("load", () => {
     }
   };
   typeWriter();
-
-  // Transition from welcome screen to main dashboard after 5 seconds
   setTimeout(() => {
     const welcome = document.getElementById("welcome");
     welcome.classList.add("fade-out");
@@ -128,7 +118,6 @@ function fillTelemetry(data) {
   batteryBar.className = 'battery-bar ' + batteryClass;
 
   document.getElementById("payload-status").textContent = data.payload.payload_status;
-
   document.getElementById("ai-result").textContent =
     `${data.payload.ai_classification.result} (${data.payload.ai_classification.confidence}%)`;
 
@@ -174,51 +163,146 @@ connectBtn.onclick = async () => {
   try {
     port = await navigator.serial.requestPort();
     await port.open({ baudRate: 9600 });
-
-    const decoder = new TextDecoderStream();
-    port.readable.pipeTo(decoder.writable);
-    reader = decoder.readable.getReader();
-
-    readPropulsionSerial();
-    alert("Propulsion connected!");
+    readSmartSerial();
+    alert("Propulsion & Imaging System connected!");
+    
+    if (typeof updatePayloadUI === "function") updatePayloadUI();
+    
   } catch (err) {
-    console.error(err);
-    alert("Failed to connect propulsion.");
+    console.error("Connection error:", err);
+    alert("Failed to connect: " + err.message);
   }
 };
 
-async function readPropulsionSerial() {
-  const logEl = document.getElementById("prop-log");
+// =====================
+// Smart Serial Reader (Binary + Text)
+// =====================
+async function readSmartSerial() {
+  const decoder = new TextDecoder();
+  let imageBuffer = [];
+  let isReceivingImage = false;
+  let expectedSize = 0;
 
-  function appendLog(msg) {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-
-    const logEntry = { timestamp: timeStr, message: msg };
-    propulsionLog.push(logEntry);
-
-    const p = document.createElement("div");
-    p.textContent = `[${timeStr}] ${msg}`;
-    logEl.appendChild(p);
-    logEl.scrollTop = logEl.scrollHeight;
-    // NEW: Send to Firebase
-    logToFirebase('propulsion/logs', { message: msg });
-  }
+  reader = port.readable.getReader();
 
   try {
     while (true) {
-      const { value, done } = await reader.read();
+      const { value, done } = await reader.read(); // value is a Uint8Array
       if (done) break;
-      if (value) {
-        const lines = value.split(/\r?\n/).filter(l => l.trim() !== "");
-        lines.forEach(line => {
-          appendLog(line);
-          // parse JSON burn data if needed
-        });
-      }
+
+      if (isReceivingImage) {
+        // --- BINARY MODE: Collecting Image Bytes ---
+        for (let i = 0; i < value.length; i++) {
+          imageBuffer.push(value[i]);
+          
+          // NEW: Update the Progress Bar width
+          const progressBar = document.getElementById("image-progress-bar");
+          if (progressBar && expectedSize > 0) {
+            let percent = Math.floor((imageBuffer.length / expectedSize) * 100);
+            progressBar.style.width = percent + "%";
+          }
+
+          if (imageBuffer.length >= expectedSize) {
+            renderSatelliteImage(imageBuffer); 
+            imageBuffer = [];
+            isReceivingImage = false;
+            
+            // Hide progress bar after 1 second
+            setTimeout(() => {
+              const progressCont = document.getElementById("image-progress-container");
+              if (progressCont) progressCont.style.display = "none";
+            }, 1000);
+
+            // Handle any text data that might be stuck at the end of the image buffer
+            if (i < value.length - 1) {
+              const remaining = value.slice(i + 1);
+              processTextLine(decoder.decode(remaining));
+            }
+            break;
+          }
+        }
+     } else {
+    // TEXT MODE: Listen for the Trigger
+    const chunk = decoder.decode(value);
+    serialBuffer += chunk; // Accumulate incoming text
+    processTextLine(chunk); 
+
+    if (serialBuffer.toUpperCase().includes("IMG_START")) {
+        console.log("!!! TRIGGER DETECTED IN BUFFER !!!");
+        
+        const sizeMatch = serialBuffer.match(/IMG_START:?\s*(\d+)/i);
+        
+        if (sizeMatch) {
+            expectedSize = parseInt(sizeMatch[1]);
+            isReceivingImage = true;
+            imageBuffer = [];
+            serialBuffer = ""; // Clear buffer for next time
+            
+           const progressCont = document.getElementById("image-progress-container");
+const progressBar = document.getElementById("image-progress-bar");
+if (progressCont) {
+    progressCont.style.display = "block";
+}
+if (progressBar) {
+    progressBar.style.width = "0%";
+}
+        }
     }
+        if (serialBuffer.length > 200) serialBuffer = serialBuffer.substring(100);
+}
+    } 
   } catch (err) {
-    console.error("Error reading propulsion:", err);
+    console.error("Stream Error:", err);
+  } finally {
+    if (reader) reader.releaseLock();
+  }
+}
+
+// =====================
+// Helper: Process Text & Update Logs
+// =====================
+function processTextLine(text) {
+  if (!text || !text.trim()) return;
+  const logEl = document.getElementById("prop-log");
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+
+  lines.forEach(line => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    
+    if (Array.isArray(propulsionLog)) {
+        propulsionLog.push({ timestamp: timeStr, message: line });
+    }
+    if (logEl) {
+      const p = document.createElement("div");
+      p.textContent = `[${timeStr}] ${line}`;
+      logEl.appendChild(p);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    logToFirebase('propulsion/logs', { message: line });
+    console.log("SATELLITE LOG:", line);
+  });
+}
+
+// =====================
+// Render Image Function
+// =====================
+function renderSatelliteImage(buffer) {
+  const uint8Array = new Uint8Array(buffer);
+  const blob = new Blob([uint8Array], { type: "image/jpeg" });
+  const url = URL.createObjectURL(blob);
+  
+  const imgElement = document.getElementById("satellite-image");
+  const placeholder = document.getElementById("image-placeholder");
+
+  if (imgElement) {
+    imgElement.src = url;
+    imgElement.style.display = "block";
+    if (placeholder) placeholder.style.display = "none";
+    
+    const sizeLabel = document.getElementById("incoming-size");
+    if (sizeLabel) sizeLabel.textContent = uint8Array.length + " bytes";
   }
 }
 
@@ -231,7 +315,6 @@ downloadBtn.onclick = () => {
     alert("No CDM data available to download.");
     return;
   }
-
   const now = new Date();
   const downloadTimestamp = now.toISOString();
   const cdmWithTimestamp = {
@@ -269,33 +352,26 @@ const sidebarItems = document.querySelectorAll('.sidebar-item');
 const sections = document.querySelectorAll('.dashboard-section');
 const dashboardContainer = document.querySelector('.dashboard-container');
 
-// Toggle sidebar collapse/expand
 sidebarToggle.addEventListener('click', () => {
   sidebar.classList.toggle('collapsed');
   dashboardContainer.classList.toggle('sidebar-collapsed');
   sidebarToggle.classList.toggle('active');
-  
-  // Force reflow to fix icon display
+ 
   sidebar.style.display = 'none';
   sidebar.offsetHeight; // Trigger reflow
   sidebar.style.display = 'block';
 });
 
-// Sidebar navigation
 sidebarItems.forEach(item => {
   item.addEventListener('click', () => {
-    // Remove active class from all items and sections
     sidebarItems.forEach(i => i.classList.remove('active'));
     sections.forEach(s => s.classList.remove('active'));
-    
-    // Add active class to clicked item and corresponding section
     item.classList.add('active');
     const sectionId = item.getAttribute('data-section') + '-section';
     document.getElementById(sectionId).classList.add('active');
   });
 });
 
-// Close sidebar on mobile when clicking outside
 document.addEventListener('click', (e) => {
   if (window.innerWidth <= 768 && 
       !sidebar.contains(e.target) && 
@@ -307,3 +383,67 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// =====================
+// Unified Connection Logic
+// =====================
+const payloadConnectBtn = document.getElementById("payload-connect-bt");
+const payloadStartBtn = document.getElementById("payload-start-camera");
+
+if (payloadConnectBtn) {
+  payloadConnectBtn.addEventListener('click', async () => {
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 }); 
+      
+      updatePayloadUI();
+      readSmartSerial(); 
+      
+      alert("Satellite Link Established!");
+    } catch (err) {
+      console.error("Connection error:", err);
+      alert("Connection Failed: " + err.message);
+    }
+  });
+}
+
+function updatePayloadUI() {
+  const dot = document.getElementById("payload-bt-dot");
+  const text = document.getElementById("payload-bt-text");
+  if (text) text.textContent = "BLUETOOTH: CONNECTED";
+  if (dot) {
+    dot.style.background = "#00ff00";
+    dot.style.boxShadow = "0 0 10px #00ff00";
+  }
+  if (payloadConnectBtn) payloadConnectBtn.style.display = "none";
+  if (payloadStartBtn) payloadStartBtn.style.display = "block";
+}
+
+// =====================
+// Final Logic for "START CAMERA"
+// =====================
+document.addEventListener('click', async (e) => {
+  if (e.target && e.target.id === 'payload-start-camera') {
+    if (!port || !port.writable) {
+      alert("Bluetooth Link Offline. Please connect first.");
+      return;
+    }
+    try {
+      const writer = port.writable.getWriter();
+      const encoder = new TextEncoder();
+      
+      await writer.write(encoder.encode("START\n"));
+      writer.releaseLock();
+
+      updatePayloadUI(); 
+      e.target.innerText = "CAMERA ACTIVE";
+      e.target.style.borderColor = "#00ff00";
+      e.target.style.color = "#00ff00";
+      
+      logToFirebase('system/camera', { status: "ACTIVE" });
+      console.log("Camera Start Signal Sent.");
+    } catch (err) {
+      console.error("Camera trigger failed:", err);
+      alert("Failed to reach Camera System.");
+    }
+  }
+});
