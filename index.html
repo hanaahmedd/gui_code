@@ -93,28 +93,59 @@
   </nav>
 
   <!-- Main Content Area -->
-  <main class="main-content">
-    <!-- Payload Section (originally status-board) -->
-    <section id="payload-section" class="dashboard-section active">
-      <h2>🛰️ Debris Detection Board - Ground Station</h2>
-      <div class="status-board">
-        <div class="status-card">
-          <h3>Payload Health</h3>
-          <div class="battery-container">
-            <div class="battery-bar" id="payload-battery-bar"></div>
-            <span id="payload-health-label"></span>
+<main class="main-content">
+  <section id="payload-section" class="dashboard-section active">
+    <h2>🛰️ Debris Detection Board - Ground Station</h2>
+    <div class="status-board">
+      
+      <div class="status-card">
+        <h3>Payload Health</h3>
+        <div class="battery-container">
+          <div class="battery-bar" id="payload-battery-bar"></div>
+          <span id="payload-health-label"></span>
+        </div>
+        <p>Status: <span id="payload-status">Initializing...</span></p>
+      </div>
+
+      <div class="status-card" id="camera-control-card">
+        <h3>System Control</h3>
+        <div class="camera-status-indicator">
+          <span id="payload-bt-dot" style="display:inline-block; width:10px; height:10px; background:#ff0000; border-radius:50%; margin-right:5px;"></span>
+          <span id="payload-bt-text">BLUETOOTH: DISCONNECTED</span>
+        </div>
+        
+        <button id="payload-connect-bt" style="margin-top: 15px; width: 100%; padding: 10px; background: rgba(0, 255, 255, 0.1); border: 1px solid #00ffff; color: #00ffff; border-radius: 8px; cursor: pointer; font-weight: 600;">
+          1. CONNECT BLUETOOTH
+        </button>
+
+        <button id="payload-start-camera" style="margin-top: 10px; width: 100%; padding: 10px; background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; color: #ffaa00; border-radius: 8px; cursor: pointer; font-weight: 600; display: none;">
+          2. START CAMERA
+        </button>
+      </div>
+
+      <div class="status-card">
+        <h3>AI Classification</h3>
+        <p id="ai-result"></p>
+      </div>
+
+      <div class="status-card" id="image-feed-card" style="grid-column: span 2;">
+        <h3>🛰️ SATELLITE IMAGE FEED</h3>
+       
+        <div class="image-container" style="position: relative; background: #000; border: 1px solid #333; min-height: 300px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px;">
+          <div id="image-placeholder" style="color: #555; font-weight: 600; text-align: center;">
+            <div class="loading-spinner" style="border: 4px solid rgba(0,255,255,0.1); border-left-color: #00ffff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+            WAITING FOR IMAGE DATA...
           </div>
+          <img id="satellite-image" src="" style="display: none; width: 100%; height: auto; object-fit: contain;">
         </div>
-        <div class="status-card">
-          <h3>Payload Status</h3>
-          <p id="payload-status"></p>
-        </div>
-        <div class="status-card">
-          <h3>AI Classification</h3>
-          <p id="ai-result"></p>
+        <div style="margin-top: 10px; display: flex; justify-content: space-between; font-size: 0.8em; color: #aaa;">
+          <span>Size: <b id="incoming-size">0</b> bytes</span>
+          <span>Last Update: <b id="last-update-time">Never</b></span>
         </div>
       </div>
-    </section>
+
+    </div>
+  </section>
 
     <!-- Propulsion Section -->
     <section id="propulsion-section" class="dashboard-section">
