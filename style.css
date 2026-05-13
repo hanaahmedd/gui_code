@@ -904,3 +904,9 @@ body {
   background: #00ffff;
   box-shadow: 0 0 10px #00ffff;
 }
+
+/* --- CDM Section Specific Padding --- */
+#cdm-section {
+  padding-left: 30px !important;
+  padding-right: 60px !important;
+}
