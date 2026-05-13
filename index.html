@@ -123,6 +123,26 @@
         </button>
       </div>
 
+  <div class="status-card" id="ai-payload-box" style="text-align: left;">
+        <h3>🛰️ AI Results</h3>
+
+        <div style="background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1);">
+          <p style="margin: 5px 0;"><strong>Scenario:</strong> <span id="payload-scenario" style="color: #00ffff;">--</span></p>
+          <p style="margin: 5px 0;"><strong>Min Distance:</strong> <span id="payload-min-dist" style="color: #fff;">--</span></p>
+          <p style="margin: 5px 0;"><strong>Collision Probability (Pc):</strong> <span id="payload-pc" style="color: #fff;">--</span></p>
+          <p style="margin: 5px 0;"><strong>Time to Closest Approach:</strong> <span id="payload-tca" style="color: #fff;">--</span></p>
+          <p style="font-size: 1.1em; margin-top: 10px;"><strong>DECISION:</strong> <span id="payload-decision" style="font-weight: bold;">--</span></p>
+        </div>
+
+        <button id="run-ai-btn" style="width: 100%; padding: 10px; background: rgba(0, 255, 255, 0.1); border: 1px solid #00ffff; color: #00ffff; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.3s;">
+          🚀 RUN AI RESULTS
+        </button>
+        
+        <p id="ai-loading-text" style="display: none; color: #ffaa00; font-weight: bold; margin-top: 10px; text-align: center; font-size: 0.9em;">
+          ⏳ Running YOLOv8 & UKF Filters... Please wait.
+        </p>
+      </div>
+      
       <div class="status-card">
         <h3>AI Classification</h3>
         <p id="ai-result"></p>
@@ -158,19 +178,24 @@
     </section>
 
     <!-- CDM Section -->
-    <section id="cdm-section" class="dashboard-section">
+<section id="cdm-section" class="dashboard-section" style="padding-left: 35px; padding-right: 15px;">
       <h2>📡 CDM (Conjunction Data Message)</h2>
-      <div class="cdm-box">
-        <p><strong>ID:</strong> <span id="cdm-id"></span></p>
-        <p><strong>Relative Velocity:</strong> <span id="cdm-velocity"></span></p>
-        <p><strong>Risk Level:</strong> <span id="cdm-risk"></span></p>
-        <p><strong>Time to Conjunction:</strong> <span id="cdm-time"></span></p>
-        <p><strong>Miss Distance:</strong> <span id="cdm-distance"></span></p>
-        <button id="download-cdm" style="margin-top:10px; padding:8px 12px; border:none; border-radius:5px; background:#00ffff; color:#000; cursor:pointer;">Download CDM</button>
-      </div>
+      
+      <button id="connect-cdm-bt" style="margin-bottom: 15px; padding: 10px 20px; background: #ffaa00; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; width: 100%; box-shadow: 0 0 10px rgba(255, 170, 0, 0.3); transition: all 0.2s;">
+        🔌 Connect to Satellite
+      </button>
+
+      <div id="cdm-list-container" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; max-height: 60vh; overflow-y: auto; padding-right: 10px;">
+         </div>
+
+   <input type="file" id="cdm-file-upload" accept=".json" style="display: none;" />
+      <button id="add-cdm-btn" 
+              onmouseover="this.style.background='rgba(0, 255, 255, 0.2)'; this.style.boxShadow='0 0 15px rgba(0, 255, 255, 0.5)';" 
+              onmouseout="this.style.background='rgba(0, 255, 255, 0.05)'; this.style.boxShadow='0 0 5px rgba(0, 255, 255, 0.2)';"
+              style="width: 100%; padding: 15px; border: 1px dashed #00ffff; border-radius: 8px; background: rgba(0, 255, 255, 0.05); color: #00ffff; font-weight: bold; font-size: 1.1em; letter-spacing: 2px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 0 5px rgba(0, 255, 255, 0.2); text-transform: uppercase;">
+        + Add New CDM 
+      </button>
     </section>
-  </main>
-</div>
 
 
   <script type="module" src="script.js"></script>
