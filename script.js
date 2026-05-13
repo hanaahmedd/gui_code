@@ -48,19 +48,7 @@ window.addEventListener("load", () => {
         fillPropulsion(data.payload.propulsion);
         logToFirebase('system/propulsion', data.payload.propulsion);
       }
-      const aiResult = data.payload.ai_classification.result.toLowerCase();
-      if (aiResult.includes("debris")) {
-        const debris = data.payload.debris_info || {};
-        latestCDM = {
-          id: `CDM_${Date.now()}`,
-          relative_velocity: debris.relative_velocity ? debris.relative_velocity + " m/s" : "Unknown",
-          risk_level: calculateRisk(debris.distance),
-          time_to_conjunction: estimateTime(debris.relative_velocity, debris.distance),
-          miss_distance: debris.distance ? debris.distance + " m" : "Unknown"
-        };
-        fillCDM(latestCDM);
-    logToFirebase('detections/cdm_events', latestCDM);
-      }
+   
     })
     .catch(error => {
       console.error("Error loading telemetry:", error);
@@ -129,17 +117,84 @@ function fillTelemetry(data) {
     });
 }
 
-function fillCDM(cdm) {
-  document.getElementById("cdm-id").textContent = cdm.id;
-  document.getElementById("cdm-velocity").textContent = cdm.relative_velocity;
+function addCDMCard(cdm) {
+  if(!cdm) return;
+  
+  const container = document.getElementById("cdm-list-container");
+  const card = document.createElement("div");
+  card.className = "cdm-card";
+  
+  const isManeuver = cdm.decision === "MANEUVER_REQUIRED";
+  const decisionColor = isManeuver ? "#ff4444" : "#00ffff"; 
+  const borderColor = isManeuver ? "#ff4444" : "#00ffff";
 
-  const riskEl = document.getElementById("cdm-risk");
-  riskEl.textContent = cdm.risk_level;
-  riskEl.className = cdm.risk_level === "HIGH" ? "status-critical" :
-                     cdm.risk_level === "MEDIUM" ? "status-warning" : "status-healthy";
+  card.style.cssText = `
+    background: linear-gradient(145deg, rgba(0, 20, 30, 0.8) 0%, rgba(0, 10, 15, 0.9) 100%);
+    border-left: 4px solid ${borderColor};
+    border-radius: 8px;
+    padding: 15px 20px;
+    position: relative;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.5), inset 0 0 10px rgba(0, 255, 255, 0.02);
+    color: #e0e0e0;
+    transition: transform 0.2s ease;
+  `;
 
-  document.getElementById("cdm-time").textContent = cdm.time_to_conjunction;
-  document.getElementById("cdm-distance").textContent = cdm.miss_distance;
+  const relPos = cdm.relative_position_RIC_m ? `${cdm.relative_position_RIC_m.r}, ${cdm.relative_position_RIC_m.t}, ${cdm.relative_position_RIC_m.n}` : "--";
+  const relVel = cdm.relative_velocity_RIC_mps ? `${cdm.relative_velocity_RIC_mps.v_total}` : "--";
+
+  card.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(0, 255, 255, 0.1); padding-bottom: 10px; margin-bottom: 15px;">
+        <div>
+            <h3 style="margin: 0; color: #fff; font-size: 1.3em; letter-spacing: 1px;">
+                Event ID: <span style="color:#00ffff; text-shadow: 0 0 5px rgba(0,255,255,0.4);">${cdm.event_id || "--"}</span>
+            </h3>
+            <span style="font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 1px;">Scenario: ${cdm.scenario || "--"}</span>
+        </div>
+        <button class="delete-cdm-btn" title="Remove this CDM" 
+                onmouseover="this.style.background='rgba(255, 68, 68, 0.2)';" 
+                onmouseout="this.style.background='rgba(255, 68, 68, 0.05)';"
+                style="background: rgba(255, 68, 68, 0.05); color: #ff4444; border: 1px solid #ff4444; border-radius: 4px; cursor: pointer; padding: 4px 10px; font-weight: bold; transition: all 0.2s;">
+            ✕
+        </button>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; font-size: 0.9em;">
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 5px;"><strong style="color:#00ffff; display:block; font-size:0.75em; text-transform:uppercase; margin-bottom:2px;">Time to TCA</strong> ${cdm.time_to_tca_days || "--"} d</div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 5px;"><strong style="color:#00ffff; display:block; font-size:0.75em; text-transform:uppercase; margin-bottom:2px;">Risk PC</strong> ${cdm.risk_pc_percent || "--"} %</div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 5px;"><strong style="color:#00ffff; display:block; font-size:0.75em; text-transform:uppercase; margin-bottom:2px;">Miss Dist</strong> ${cdm.miss_distance_m || "--"} m</div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 5px;"><strong style="color:#00ffff; display:block; font-size:0.75em; text-transform:uppercase; margin-bottom:2px;">Type</strong> ${cdm.c_object_type || "--"}</div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 5px;"><strong style="color:#00ffff; display:block; font-size:0.75em; text-transform:uppercase; margin-bottom:2px;">Span</strong> ${cdm.c_span_m || "--"} m</div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 5px;"><strong style="color:#00ffff; display:block; font-size:0.75em; text-transform:uppercase; margin-bottom:2px;">Pos (r,t,n)</strong> ${relPos}</div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 5px;"><strong style="color:#00ffff; display:block; font-size:0.75em; text-transform:uppercase; margin-bottom:2px;">Vel Total</strong> ${relVel} m/s</div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 5px;"><strong style="color:#00ffff; display:block; font-size:0.75em; text-transform:uppercase; margin-bottom:2px;">Sigma (R,T,N)</strong> ${cdm.c_sigma_r || "--"}, ${cdm.c_sigma_t || "--"}, ${cdm.c_sigma_n || "--"}</div>
+    </div>
+    
+    <div style="margin-top: 15px; text-align: center; background: ${isManeuver ? 'rgba(255, 0, 0, 0.08)' : 'rgba(0, 255, 255, 0.05)'}; border: 1px solid ${isManeuver ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 255, 0.2)'}; padding: 12px; border-radius: 6px; box-shadow: inset 0 0 15px ${isManeuver ? 'rgba(255,0,0,0.15)' : 'rgba(0,255,255,0.05)'};">
+       <strong style="text-transform: uppercase; letter-spacing: 2px; font-size: 0.8em; color: #888;">System Decision</strong><br>
+       <div style="margin-top: 5px; color: ${decisionColor}; font-weight: bold; font-size: 1.4em; letter-spacing: 2px; text-shadow: 0 0 12px ${decisionColor};">
+           ${cdm.decision || "--"}
+       </div>
+    </div>
+
+    <button class="send-bt-btn" title="Send this CDM to Satellite" 
+            onmouseover="this.style.background='rgba(0, 150, 255, 0.2)'; this.style.boxShadow='0 0 10px rgba(0,150,255,0.4)';" 
+            onmouseout="this.style.background='rgba(0, 150, 255, 0.05)'; this.style.boxShadow='none';"
+            style="width: 100%; margin-top: 10px; background: rgba(0, 150, 255, 0.05); color: #00bfff; border: 1px solid #00bfff; border-radius: 4px; cursor: pointer; padding: 10px; font-weight: bold; transition: all 0.2s; letter-spacing: 1px;">
+        📡 SEND JSON VIA BLUETOOTH
+    </button>
+  `;
+
+  // Delete card logic
+  const deleteBtn = card.querySelector(".delete-cdm-btn");
+  deleteBtn.addEventListener("click", () => card.remove());
+
+  // Send over Bluetooth logic
+  const sendBtn = card.querySelector(".send-bt-btn");
+  sendBtn.addEventListener("click", () => {
+     sendCDMToHardware(cdm, sendBtn);
+  });
+
+  container.prepend(card);
 }
 
 function calculateRisk(distance) {
@@ -309,39 +364,32 @@ function renderSatelliteImage(buffer) {
 // =====================
 // Download CDM button
 // =====================
-const downloadBtn = document.getElementById("download-cdm");
-downloadBtn.onclick = () => {
-  if (!latestTelemetry || !latestCDM) {
-    alert("No CDM data available to download.");
-    return;
-  }
-  const now = new Date();
-  const downloadTimestamp = now.toISOString();
-  const cdmWithTimestamp = {
-    ...latestCDM,
-    id: `CDM_${downloadTimestamp.replace(/[:.]/g, '-')}`
-  };
+// --- ADD CDM UPLOAD LOGIC ---
+const cdmFileInput = document.getElementById("cdm-file-upload");
+const addCdmBtn = document.getElementById("add-cdm-btn");
 
-  const exportData = {
-    timestamp: downloadTimestamp,
-    system_status: latestTelemetry.system_status,
-    payload: {
-      payload_status: latestTelemetry.payload.payload_status,
-      health: latestTelemetry.payload.health,
-      battery_level: latestTelemetry.payload.battery_level,
-      ai_classification: latestTelemetry.payload.ai_classification,
-      debris_info: latestTelemetry.payload.debris_info || {},
-      propulsion_log: propulsionLog,
-      cdm: cdmWithTimestamp
-    }
-  };
+if(addCdmBtn && cdmFileInput) {
+  addCdmBtn.addEventListener("click", () => {
+    cdmFileInput.click();
+  });
 
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `CDM_${downloadTimestamp.replace(/[:.]/g, '-')}.json`;
-  link.click();
-};
+  cdmFileInput.addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target.result);
+        addCDMCard(json); // <-- This is the only line that changed here!
+      } catch (err) {
+        alert("Error: Please upload a valid CDM JSON file.");
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ""; // Reset file input so you can upload the same file again
+  });
+}
 
 // =====================
 // Sidebar Functionality
@@ -446,4 +494,158 @@ document.addEventListener('click', async (e) => {
       alert("Failed to reach Camera System.");
     }
   }
+});
+
+// =======================================================
+// --- CDM SPECIFIC BLUETOOTH CONNECT BUTTON ---
+// =======================================================
+const connectCdmBtn = document.getElementById("connect-cdm-bt");
+
+if (connectCdmBtn) {
+  connectCdmBtn.addEventListener("click", async () => {
+    try {
+      // Check if the port is already open from another button on the dashboard
+      if (typeof port !== 'undefined' && port && port.readable) {
+          alert("✅ Satellite is already connected!");
+          return;
+      }
+
+      // If not connected, open the port selection window
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 115200 }); // HC-05 / ESP32 standard speed
+      
+      alert("✅ Connected successfully! You can now send CDM data.");
+      
+      // Optional: change button appearance to show it is connected
+      connectCdmBtn.innerHTML = "✅ SATELLITE CONNECTED";
+      connectCdmBtn.style.background = "#00ff00";
+      
+    } catch (e) {
+      console.error("Connection error:", e);
+      if (e.message.includes("already open")) {
+          alert("✅ Satellite is already connected!");
+      } else {
+          alert("❌ Could not connect. Make sure your Bluetooth module is paired to your laptop.");
+      }
+    }
+  });
+}
+
+
+// =======================================================
+// --- BLUETOOTH TRANSMISSION LOGIC ---
+// =======================================================
+async function sendCDMToHardware(cdmData, btnElement) {
+    if (typeof port === 'undefined' || !port || !port.writable) {
+        alert("⚠️ Please connect to the hardware first using the 'Connect ESP32 (Hardware)' button on the dashboard!");
+        return;
+    }
+
+    const originalText = btnElement.innerHTML;
+    const originalColor = btnElement.style.color;
+    
+    btnElement.innerHTML = "⏳ TRANSMITTING...";
+    btnElement.style.color = "orange";
+    btnElement.style.borderColor = "orange";
+
+    try {
+        // --- 🔴 THE MAGIC HAPPENS HERE 🔴 ---
+        // We create a new, smaller package with ONLY the 4 things the ESP32 needs.
+        const hardwarePayload = {
+            scenario: cdmData.scenario,
+            event_id: cdmData.event_id,
+            risk_pc_percent: cdmData.risk_pc_percent,
+            decision: cdmData.decision
+        };
+
+        // We stringify the SMALL package instead of the whole file
+        const jsonString = JSON.stringify(hardwarePayload) + "\n";
+        // ------------------------------------
+        
+        const encoder = new TextEncoder();
+        const writer = port.writable.getWriter();
+        await writer.write(encoder.encode(jsonString));
+        writer.releaseLock(); 
+
+        btnElement.innerHTML = "✅ SENT SUCCESSFULLY!";
+        btnElement.style.color = "#00ff00";
+        btnElement.style.borderColor = "#00ff00";
+        
+        setTimeout(() => {
+            btnElement.innerHTML = originalText;
+            btnElement.style.color = originalColor;
+            btnElement.style.borderColor = originalColor;
+        }, 3000);
+
+    } catch (error) {
+        console.error("Error sending Bluetooth data:", error);
+        
+        btnElement.innerHTML = "❌ FAILED TO SEND";
+        btnElement.style.color = "red";
+        btnElement.style.borderColor = "red";
+        
+        setTimeout(() => {
+            btnElement.innerHTML = originalText;
+            btnElement.style.color = originalColor;
+            btnElement.style.borderColor = originalColor;
+        }, 3000);
+    }
+}
+
+// ==========================================
+// TRIGGER PYTHON AI SERVER 
+// ==========================================
+document.getElementById("run-ai-btn").addEventListener("click", async () => {
+    const btn = document.getElementById("run-ai-btn");
+    const loadingText = document.getElementById("ai-loading-text");
+
+    // Show loading state and disable button
+    loadingText.style.display = "block";
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+
+    // Reset previous results to "--" while AI is calculating
+    document.getElementById("payload-scenario").innerText = "--";
+    document.getElementById("payload-min-dist").innerText = "--";
+    document.getElementById("payload-pc").innerText = "--";
+    document.getElementById("payload-tca").innerText = "--";
+    document.getElementById("payload-decision").innerText = "--";
+    document.getElementById("payload-decision").style.color = "#fff";
+
+    try {
+        // Ping the background Python server
+        let response = await fetch("http://localhost:5000/run-ai");
+        
+        if (!response.ok) {
+            throw new Error("Python server error");
+        }
+
+        // Get the calculated results
+        let results = await response.json();
+
+        // Update the GUI with the answers
+        document.getElementById("payload-scenario").innerText = results.scenario;
+        document.getElementById("payload-min-dist").innerText = results.min_dist_m + " m";
+        document.getElementById("payload-pc").innerText = results.pc_percentage;
+        document.getElementById("payload-tca").innerText = results.tca_sec + " s";
+        
+        const decisionSpan = document.getElementById("payload-decision");
+        decisionSpan.innerText = results.decision;
+        if(results.decision === "MANEUVER") {
+             decisionSpan.style.color = "#ff4444"; // Red alert!
+        } else {
+             decisionSpan.style.color = "#00ff00"; // Green safe!
+        }
+
+        console.log("✅ AI Payload Loaded!");
+
+    } catch (error) {
+        console.error("AI Fetch Error:", error);
+        alert("❌ Could not connect to the AI Engine. Is the main.py script running?");
+    } finally {
+        // Reset button and hide loading text
+        loadingText.style.display = "none";
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    }
 });
